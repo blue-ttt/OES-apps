@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Deco Pro - 高機能QRコードメーカー</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="text/javascript" src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        #canvas-container canvas {
+            max-width: 100%;
+            height: auto !important;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-5xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-extrabold text-slate-800 tracking-tight">QR Deco Pro</h1>
+            <p class="text-slate-600 mt-2 text-sm md:text-base">イラスト・ロゴ入り、カラーカスタマイズ可能なハイクオリティQR作成</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- Left: Settings -->
+            <div class="lg:col-span-7 space-y-6">
+                <!-- Data Input Section -->
+                <div class="glass-panel p-6 rounded-3xl shadow-xl">
+                    <h2 class="text-xl font-bold text-slate-700 mb-4 flex items-center">
+                        <span class="bg-blue-500 text-white p-1 rounded-lg mr-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                        </span>
+                        内容を入力
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">種類</label>
+                            <select id="qrType" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-400 outline-none transition-all">
+                                <option value="url">ウェブサイト (URL)</option>
+                                <option value="text">自由なテキスト</option>
+                                <option value="wifi">Wi-Fi 設定</option>
+                                <option value="tel">電話番号</option>
+                            </select>
+                        </div>
+
+                        <div id="inputGroup">
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1" id="inputLabel">URL</label>
+                            <input type="text" id="qrData" placeholder="https://example.com" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-400 outline-none transition-all">
+                        </div>
+
+                        <!-- Wi-Fi Specific (Hidden by default) -->
+                        <div id="wifiGroup" class="hidden space-y-3">
+                            <input type="text" id="wifiSsid" placeholder="ネットワーク名(SSID)" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm outline-none">
+                            <input type="text" id="wifiPass" placeholder="パスワード" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Design Customization -->
+                <div class="glass-panel p-6 rounded-3xl shadow-xl">
+                    <h2 class="text-xl font-bold text-slate-700 mb-4 flex items-center">
+                        <span class="bg-pink-500 text-white p-1 rounded-lg mr-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path></svg>
+                        </span>
+                        デザイン・装飾
+                    </h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Dots Style -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">ドットの形</label>
+                            <select id="dotStyle" class="w-full bg-white border border-slate-200 rounded-xl p-2 text-sm">
+                                <option value="square">標準 (四角)</option>
+                                <option value="dots">丸いドット</option>
+                                <option value="rounded">角丸</option>
+                                <option value="extra-rounded">極太角丸</option>
+                                <option value="classy">クラシック</option>
+                            </select>
+                        </div>
+
+                        <!-- Color -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">メインカラー</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="color" id="qrColor" value="#000000" class="h-10 w-full rounded cursor-pointer">
+                                <input type="color" id="qrBgColor" value="#ffffff" title="背景色" class="h-10 w-full rounded cursor-pointer">
+                            </div>
+                        </div>
+
+                        <!-- Corner Style -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">角の形 (外側)</label>
+                            <select id="cornerStyle" class="w-full bg-white border border-slate-200 rounded-xl p-2 text-sm">
+                                <option value="square">四角</option>
+                                <option value="dot">丸</option>
+                                <option value="extra-rounded">角丸</option>
+                            </select>
+                        </div>
+
+                        <!-- Logo/Image -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">中心の画像 (アイコン)</label>
+                            <input type="file" id="logoUpload" accept="image/*" class="text-xs file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Preview & Download -->
+            <div class="lg:col-span-5 flex flex-col space-y-6">
+                <div class="glass-panel p-8 rounded-3xl shadow-2xl flex flex-col items-center justify-center text-center flex-grow">
+                    <div id="canvas-container" class="mb-6">
+                        <!-- QR Code Canvas will be rendered here -->
+                    </div>
+                    
+                    <div class="w-full space-y-4">
+                        <button id="downloadBtn" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-4 px-6 rounded-2xl shadow-lg transform transition active:scale-95 flex items-center justify-center space-x-2">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            <span>PNGとしてダウンロード</span>
+                        </button>
+                        <p class="text-slate-400 text-xs italic">※複雑なデザインは読み取りにくくなる場合があります。作成後は必ずお手元のスマホでスキャンを確認してください。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let qrCode;
+        let logoData = null;
+
+        const container = document.getElementById("canvas-container");
+        const qrInput = document.getElementById("qrData");
+        const qrType = document.getElementById("qrType");
+        const dotStyle = document.getElementById("dotStyle");
+        const qrColor = document.getElementById("qrColor");
+        const qrBgColor = document.getElementById("qrBgColor");
+        const cornerStyle = document.getElementById("cornerStyle");
+        const logoUpload = document.getElementById("logoUpload");
+
+        // Wi-Fi inputs
+        const wifiGroup = document.getElementById("wifiGroup");
+        const inputGroup = document.getElementById("inputGroup");
+        const ssidInput = document.getElementById("wifiSsid");
+        const passInput = document.getElementById("wifiPass");
+
+        function initQR() {
+            qrCode = new QRCodeStyling({
+                width: 300,
+                height: 300,
+                type: "canvas",
+                data: "https://example.com",
+                image: "",
+                dotsOptions: {
+                    color: "#000000",
+                    type: "square"
+                },
+                backgroundOptions: {
+                    color: "#ffffff",
+                },
+                cornersSquareOptions: {
+                    type: "square",
+                    color: "#000000"
+                },
+                imageOptions: {
+                    crossOrigin: "anonymous",
+                    margin: 5
+                }
+            });
+
+            qrCode.append(container);
+            updateQR();
+        }
+
+        function getEncodedData() {
+            const type = qrType.value;
+            const basicData = qrInput.value;
+
+            if (type === "url") return basicData.startsWith('http') ? basicData : `https://${basicData}`;
+            if (type === "text") return basicData;
+            if (type === "tel") return `tel:${basicData}`;
+            if (type === "wifi") {
+                return `WIFI:S:${ssidInput.value};T:WPA;P:${passInput.value};;`;
+            }
+            return basicData;
+        }
+
+        function updateQR() {
+            const data = getEncodedData();
+            
+            qrCode.update({
+                data: data || " ",
+                dotsOptions: {
+                    color: qrColor.value,
+                    type: dotStyle.value
+                },
+                backgroundOptions: {
+                    color: qrBgColor.value
+                },
+                cornersSquareOptions: {
+                    type: cornerStyle.value,
+                    color: qrColor.value
+                },
+                image: logoData
+            });
+        }
+
+        // Event Listeners
+        qrType.addEventListener("change", (e) => {
+            const val = e.target.value;
+            if (val === "wifi") {
+                wifiGroup.classList.remove("hidden");
+                inputGroup.classList.add("hidden");
+            } else {
+                wifiGroup.classList.add("hidden");
+                inputGroup.classList.remove("hidden");
+                const labels = { url: "URL", text: "テキスト", tel: "電話番号" };
+                document.getElementById("inputLabel").innerText = labels[val];
+                qrInput.placeholder = val === "tel" ? "09012345678" : "入力を開始...";
+            }
+            updateQR();
+        });
+
+        [qrInput, ssidInput, passInput, dotStyle, qrColor, qrBgColor, cornerStyle].forEach(el => {
+            el.addEventListener("input", updateQR);
+        });
+
+        logoUpload.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    logoData = event.target.result;
+                    updateQR();
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById("downloadBtn").addEventListener("click", () => {
+            qrCode.download({ name: "my-custom-qr", extension: "png" });
+        });
+
+        // Start
+        window.onload = initQR;
+    </script>
+</body>
+</html>
