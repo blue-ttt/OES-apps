@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OES Chart - オンライングラフ作成</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+        body { font-family: 'Inter', 'sans-serif'; }
+        .data-row:nth-child(even) { background-color: #f9fafb; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen pb-20">
+
+    <!-- Header -->
+    <header class="bg-white border-b sticky top-0 z-10">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+            <h1 class="text-xl font-bold text-blue-600 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                OES Chart
+            </h1>
+            <button id="downloadBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm hover:bg-blue-700 transition-colors flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                保存
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto p-4 space-y-6">
+        
+        <!-- Graph Preview Card -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div class="flex flex-wrap gap-2 mb-6 overflow-x-auto pb-2">
+                <button onclick="changeChartType('bar')" class="type-btn px-4 py-2 rounded-full border text-sm font-medium transition-all bg-blue-50 border-blue-200 text-blue-700" data-type="bar">棒グラフ</button>
+                <button onclick="changeChartType('line')" class="type-btn px-4 py-2 rounded-full border text-sm font-medium transition-all bg-white text-gray-600 hover:bg-gray-50" data-type="line">折れ線</button>
+                <button onclick="changeChartType('pie')" class="type-btn px-4 py-2 rounded-full border text-sm font-medium transition-all bg-white text-gray-600 hover:bg-gray-50" data-type="pie">円グラフ</button>
+                <button onclick="changeChartType('doughnut')" class="type-btn px-4 py-2 rounded-full border text-sm font-medium transition-all bg-white text-gray-600 hover:bg-gray-50" data-type="doughnut">ドーナツ</button>
+                <button onclick="changeChartType('radar')" class="type-btn px-4 py-2 rounded-full border text-sm font-medium transition-all bg-white text-gray-600 hover:bg-gray-50" data-type="radar">レーダー</button>
+            </div>
+            
+            <div class="relative w-full aspect-video md:aspect-[21/9]">
+                <canvas id="mainChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Editor Section -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Settings -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+                <h2 class="font-bold text-gray-800 border-b pb-2">設定</h2>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">グラフのタイトル</label>
+                    <input type="text" id="chartTitle" value="売上レポート" class="w-full border p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">メインカラー</label>
+                    <input type="color" id="primaryColor" value="#3b82f6" class="w-full h-10 border rounded-lg p-1">
+                </div>
+            </div>
+
+            <!-- Table Editor -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 md:col-span-2">
+                <h2 class="font-bold text-gray-800 border-b pb-2 mb-4 flex justify-between items-center">
+                    データ入力
+                    <button id="addRowBtn" class="text-blue-600 text-sm flex items-center gap-1 hover:underline">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                        </svg>
+                        行を追加
+                    </button>
+                </h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left" id="dataTable">
+                        <thead>
+                            <tr class="text-xs font-semibold text-gray-500 uppercase">
+                                <th class="pb-3 pr-2">ラベル</th>
+                                <th class="pb-3 px-2">数値</th>
+                                <th class="pb-3 text-right">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- Rows added dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let myChart = null;
+        let chartType = 'bar';
+        
+        const initialData = [
+            { label: '1月', value: 450 },
+            { label: '2月', value: 620 },
+            { label: '3月', value: 550 },
+            { label: '4月', value: 890 }
+        ];
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            initTable();
+            renderChart();
+            setupEventListeners();
+        });
+
+        function initTable() {
+            const tbody = document.getElementById('tableBody');
+            initialData.forEach(item => addRow(item.label, item.value));
+        }
+
+        function addRow(label = '', value = 0) {
+            const tbody = document.getElementById('tableBody');
+            const tr = document.createElement('tr');
+            tr.className = 'data-row border-t';
+            tr.innerHTML = `
+                <td class="py-3 pr-2">
+                    <input type="text" value="${label}" class="label-input w-full border-none focus:ring-0 text-sm" placeholder="項目名">
+                </td>
+                <td class="py-3 px-2">
+                    <input type="number" value="${value}" class="value-input w-full border-none focus:ring-0 text-sm font-mono" placeholder="0">
+                </td>
+                <td class="py-3 text-right">
+                    <button class="remove-row text-red-400 hover:text-red-600 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+
+            // インプットイベント
+            tr.querySelectorAll('input').forEach(input => {
+                input.addEventListener('input', updateChart);
+            });
+            tr.querySelector('.remove-row').addEventListener('click', () => {
+                tr.remove();
+                updateChart();
+            });
+            updateChart();
+        }
+
+        function getChartData() {
+            const rows = document.querySelectorAll('.data-row');
+            const labels = [];
+            const values = [];
+            rows.forEach(row => {
+                labels.push(row.querySelector('.label-input').value);
+                values.push(parseFloat(row.querySelector('.value-input').value) || 0);
+            });
+            return { labels, values };
+        }
+
+        function updateChart() {
+            if (!myChart) return;
+            const { labels, values } = getChartData();
+            const color = document.getElementById('primaryColor').value;
+            const title = document.getElementById('chartTitle').value;
+
+            myChart.data.labels = labels;
+            myChart.data.datasets[0].data = values;
+            myChart.data.datasets[0].backgroundColor = chartType === 'pie' || chartType === 'doughnut' ? 
+                generateColors(labels.length, color) : color + '99';
+            myChart.data.datasets[0].borderColor = color;
+            myChart.options.plugins.title.text = title;
+            
+            myChart.update();
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            const { labels, values } = getChartData();
+            const color = document.getElementById('primaryColor').value;
+
+            if (myChart) myChart.destroy();
+
+            myChart = new Chart(ctx, {
+                type: chartType,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '数値',
+                        data: values,
+                        backgroundColor: chartType === 'pie' || chartType === 'doughnut' ? 
+                            generateColors(labels.length, color) : color + '99',
+                        borderColor: color,
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: ['pie', 'doughnut', 'radar'].includes(chartType),
+                            position: 'bottom'
+                        },
+                        title: {
+                            display: true,
+                            text: document.getElementById('chartTitle').value,
+                            font: { size: 18, weight: 'bold' }
+                        }
+                    },
+                    scales: ['pie', 'doughnut', 'radar'].includes(chartType) ? {} : {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function changeChartType(type) {
+            chartType = type;
+            document.querySelectorAll('.type-btn').forEach(btn => {
+                if (btn.dataset.type === type) {
+                    btn.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-700');
+                    btn.classList.remove('bg-white', 'text-gray-600');
+                } else {
+                    btn.classList.remove('bg-blue-50', 'border-blue-200', 'text-blue-700');
+                    btn.classList.add('bg-white', 'text-gray-600');
+                }
+            });
+            renderChart();
+        }
+
+        function generateColors(count, baseColor) {
+            const colors = [];
+            for (let i = 0; i < count; i++) {
+                const opacity = 1 - (i * 0.15);
+                colors.push(`${baseColor}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`);
+            }
+            return colors;
+        }
+
+        function setupEventListeners() {
+            document.getElementById('addRowBtn').addEventListener('click', () => addRow('新規項目', 0));
+            document.getElementById('chartTitle').addEventListener('input', updateChart);
+            document.getElementById('primaryColor').addEventListener('input', updateChart);
+            
+            document.getElementById('downloadBtn').addEventListener('click', () => {
+                const link = document.createElement('a');
+                link.download = 'chart.png';
+                link.href = document.getElementById('mainChart').toDataURL('image/png');
+                link.click();
+            });
+        }
+    </script>
+</body>
+</html>
