@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Writer Pro - 高機能執筆エディタ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+
+        .editor-container {
+            min-height: 60vh;
+            outline: none;
+        }
+
+        .tool-btn {
+            @apply p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-600;
+        }
+
+        .tool-btn.active {
+            @apply bg-blue-100 text-blue-600;
+        }
+
+        /* AI Loading Animation */
+        .ai-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+
+        /* Mobile specific adjustments */
+        @media (max-width: 640px) {
+            .toolbar {
+                overflow-x: auto;
+                white-space: nowrap;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+    </style>
+</head>
+<body class="max-w-4xl mx-auto px-4 py-6 md:py-12">
+
+    <!-- Header -->
+    <header class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+                AI Writer Pro
+            </h1>
+            <p class="text-sm text-gray-500">次世代の執筆エクスペリエンス</p>
+        </div>
+        <div class="flex space-x-2">
+            <button id="downloadBtn" class="flex items-center px-4 py-2 bg-gray-800 text-white rounded-full text-sm hover:bg-gray-700 transition shadow-sm">
+                <i class="fas fa-download mr-2"></i>保存
+            </button>
+        </div>
+    </header>
+
+    <!-- Toolbar -->
+    <div class="sticky top-4 z-10 mb-4 p-2 bg-white rounded-2xl shadow-lg border border-gray-200 toolbar flex items-center space-x-1 sm:space-x-2">
+        <button class="tool-btn" onclick="execCmd('bold')" title="太字"><i class="fas fa-bold"></i></button>
+        <button class="tool-btn" onclick="execCmd('italic')" title="斜体"><i class="fas fa-italic"></i></button>
+        <button class="tool-btn" onclick="execCmd('underline')" title="下線"><i class="fas fa-underline"></i></button>
+        <div class="w-px h-6 bg-gray-200 mx-1"></div>
+        <button class="tool-btn" onclick="execCmd('insertUnorderedList')" title="箇条書き"><i class="fas fa-list-ul"></i></button>
+        <button class="tool-btn" onclick="execCmd('formatBlock', 'h2')" title="見出し"><i class="fas fa-heading"></i></button>
+        <div class="w-px h-6 bg-gray-200 mx-1"></div>
+        <button class="tool-btn text-purple-600 font-bold" onclick="showAiModal('generate')" title="AI生成">
+            <i class="fas fa-magic mr-1"></i>AI生成
+        </button>
+        <button class="tool-btn text-emerald-600 font-bold" onclick="showAiModal('proofread')" title="AI校正">
+            <i class="fas fa-spell-check mr-1"></i>校正
+        </button>
+        <button class="tool-btn text-orange-600 font-bold" onclick="showAiModal('evaluate')" title="AI評価">
+            <i class="fas fa-chart-line mr-1"></i>評価
+        </button>
+    </div>
+
+    <!-- Main Editor Area -->
+    <main class="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100 mb-6">
+        <div id="editor" class="editor-container p-6 md:p-10 text-lg leading-relaxed text-gray-700" contenteditable="true">
+            <h2>新しい物語をここから始めましょう...</h2>
+            <p>AIの力を借りて、より洗練された文章を作成できます。ツールバーの「AI生成」をクリックして、アイデアを広げてみてください。</p>
+        </div>
+    </main>
+
+    <!-- Word Count Footer -->
+    <footer class="flex justify-between items-center text-xs text-gray-400 px-4">
+        <div>文字数: <span id="wordCount">0</span> 文字</div>
+        <div>オートセーブ有効</div>
+    </footer>
+
+    <!-- AI Interaction Modal -->
+    <div id="aiModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden">
+            <div id="aiHeader" class="p-6 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="text-xl font-bold flex items-center" id="modalTitle">AIアシスタント</h3>
+                <button onclick="closeAiModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            
+            <div id="aiContent" class="p-6">
+                <!-- Loading State -->
+                <div id="aiLoading" class="hidden text-center py-10">
+                    <div class="inline-block p-4 rounded-full bg-blue-50 mb-4">
+                        <i class="fas fa-robot text-4xl text-blue-600 ai-pulse"></i>
+                    </div>
+                    <p class="text-gray-600 font-medium">AIが文章を分析しています...</p>
+                </div>
+
+                <!-- Result View -->
+                <div id="aiResult" class="hidden">
+                    <div class="bg-gray-50 rounded-xl p-4 text-sm text-gray-700 max-h-60 overflow-y-auto mb-4 border border-gray-100" id="resultText"></div>
+                    <div class="flex space-x-2">
+                        <button id="applyBtn" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition">文章を反映する</button>
+                        <button onclick="closeAiModal()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-200 transition">閉じる</button>
+                    </div>
+                </div>
+
+                <!-- Initial Prompt for Generate -->
+                <div id="aiPrompt" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">どのような内容を生成したいですか？</label>
+                    <textarea id="promptInput" class="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none mb-4" rows="3" placeholder="例：この文章に続く魅力的な結末を提案して..."></textarea>
+                    <button id="submitPrompt" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition">生成を開始</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const apiKey = ""; // Gemini API Key environment logic handled internally
+        const editor = document.getElementById('editor');
+        const wordCountDisplay = document.getElementById('wordCount');
+        const aiModal = document.getElementById('aiModal');
+        const aiLoading = document.getElementById('aiLoading');
+        const aiResult = document.getElementById('aiResult');
+        const aiPrompt = document.getElementById('aiPrompt');
+        const resultText = document.getElementById('resultText');
+        const modalTitle = document.getElementById('modalTitle');
+        const applyBtn = document.getElementById('applyBtn');
+
+        let currentMode = '';
+
+        // Standard rich text commands
+        function execCmd(cmd, val = null) {
+            document.execCommand(cmd, false, val);
+            editor.focus();
+        }
+
+        // Update word count
+        editor.addEventListener('input', () => {
+            const text = editor.innerText || "";
+            wordCountDisplay.innerText = text.length;
+        });
+
+        // AI Logic
+        async function callAI(query, systemPrompt) {
+            let retries = 0;
+            const maxRetries = 5;
+            
+            while (retries <= maxRetries) {
+                try {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: query }] }],
+                            systemInstruction: { parts: [{ text: systemPrompt }] }
+                        })
+                    });
+
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    const result = await response.json();
+                    return result.candidates?.[0]?.content?.parts?.[0]?.text || "エラーが発生しました。";
+                } catch (error) {
+                    if (retries === maxRetries) throw error;
+                    await new Promise(r => setTimeout(r, Math.pow(2, retries) * 1000));
+                    retries++;
+                }
+            }
+        }
+
+        function showAiModal(mode) {
+            currentMode = mode;
+            aiModal.classList.remove('hidden');
+            aiLoading.classList.add('hidden');
+            aiResult.classList.add('hidden');
+            aiPrompt.classList.add('hidden');
+
+            if (mode === 'generate') {
+                modalTitle.innerText = 'AI 続きを生成';
+                aiPrompt.classList.remove('hidden');
+            } else if (mode === 'proofread') {
+                modalTitle.innerText = 'AI 校正・修正';
+                processAiRequest('この文章の誤字脱字を修正し、より自然な日本語に書き換えてください。');
+            } else if (mode === 'evaluate') {
+                modalTitle.innerText = 'AI 文章評価';
+                processAiRequest('この文章の読みやすさ、論理構成、語彙力を100点満点で採点し、改善点を詳しく教えてください。');
+            }
+        }
+
+        function closeAiModal() {
+            aiModal.classList.add('hidden');
+        }
+
+        async function processAiRequest(instruction) {
+            aiLoading.classList.remove('hidden');
+            aiPrompt.classList.add('hidden');
+            aiResult.classList.add('hidden');
+
+            const context = editor.innerText;
+            try {
+                const responseText = await callAI(`文章: ${context}\n指示: ${instruction}`, "あなたはプロの編集者かつ作家です。ユーザーの文章を最高レベルに引き上げる手助けをします。");
+                resultText.innerText = responseText;
+                
+                aiLoading.classList.add('hidden');
+                aiResult.classList.remove('hidden');
+                
+                // Toggle Apply button based on mode
+                applyBtn.style.display = (currentMode === 'evaluate') ? 'none' : 'block';
+            } catch (e) {
+                resultText.innerText = "エラー: AIとの接続に失敗しました。時間をおいて再度お試しください。";
+                aiLoading.classList.add('hidden');
+                aiResult.classList.remove('hidden');
+                applyBtn.style.display = 'none';
+            }
+        }
+
+        document.getElementById('submitPrompt').addEventListener('click', () => {
+            const prompt = document.getElementById('promptInput').value;
+            processAiRequest(prompt || '続きを書いてください。');
+        });
+
+        applyBtn.addEventListener('click', () => {
+            if (currentMode === 'generate') {
+                editor.innerHTML += `<p>${resultText.innerText}</p>`;
+            } else if (currentMode === 'proofread') {
+                editor.innerText = resultText.innerText;
+            }
+            closeAiModal();
+        });
+
+        // Download functionality
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            const content = `
+                <!DOCTYPE html>
+                <html>
+                <head><meta charset="UTF-8"><title>AI Writer Pro Export</title></head>
+                <body>${editor.innerHTML}</body>
+                </html>
+            `;
+            const blob = new Blob([content], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'article.html';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // Initial Word count
+        wordCountDisplay.innerText = editor.innerText.length;
+    </script>
+</body>
+</html>
